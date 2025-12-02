@@ -1,7 +1,7 @@
 // backend/routes/sellers.js
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const Seller = require('../models/Seller');
@@ -43,7 +43,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Seller already exists' });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcryptjs.hash(password, 10);
     const seller = new Seller({
       name: shopName,
       shopName,
@@ -74,7 +74,7 @@ router.post('/login', async (req, res) => {
     if (seller.banned) return res.status(403).json({ error: 'Account banned' });
     if (seller.suspended) return res.status(403).json({ error: 'Account suspended' });
 
-    const ok = await bcrypt.compare(password, seller.passwordHash || '');
+    const ok = await bcryptjs.compare(password, seller.passwordHash || '');
     if (!ok) return res.status(400).json({ error: 'Invalid credentials' });
 
     const token = jwt.sign({ id: seller._id, role: 'seller' }, JWT_SECRET, { expiresIn: '30d' });
