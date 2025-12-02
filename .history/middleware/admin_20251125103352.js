@@ -1,9 +1,9 @@
-// backend/middleware/admin.js
+
 module.exports = function (req, res, next) {
-  // use environment value or fallback for dev
+
   const adminSecret = (process.env.ADMIN_SECRET || 'ayo$oya').toString().trim();
 
-  // accept from header, query param, or request body (helpful for testing)
+
   const header = (req.headers['x-admin-secret'] || '').toString().trim();
   const q = (req.query && req.query.adminSecret) ? String(req.query.adminSecret).trim() : '';
   const b = (req.body && req.body.adminSecret) ? String(req.body.adminSecret).trim() : '';

@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 
-// -------------------------------
-// 🔍 SEARCH PRODUCTS (MAIN)
-// -------------------------------
+
+
+
 router.get('/search', async (req, res) => {
   try {
     const q = req.query.q || "";
@@ -25,9 +25,9 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// -------------------------------
-// ✔ LIST ALL PRODUCTS
-// -------------------------------
+
+
+
 router.get('/', async (req, res) => {
   try {
     const prods = await Product.find()
@@ -40,9 +40,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// -------------------------------
-// ✔ GET PRODUCT BY ID
-// -------------------------------
+
+
+
 router.get('/:id', async (req, res) => {
   try {
     const p = await Product.findById(req.params.id)

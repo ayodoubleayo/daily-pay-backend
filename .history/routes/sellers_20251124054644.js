@@ -1,4 +1,4 @@
-// backend/routes/sellers.js
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -9,18 +9,18 @@ const Product = require('../models/Product');
 const Transaction = require('../models/Transaction'); // used to show seller purchases
 const Order = require('../models/Order');             // <-- ensure Order model is imported
 
-// History isn't always present in every project. try to require it safely.
+
 let History = null;
 try {
   History = require('../models/History');
 } catch (e) {
-  // History optional — we'll skip updating it if not available.
+
 }
 
 const authSeller = require('../middleware/authSeller');
 const JWT_SECRET = process.env.JWT_SECRET || 'secret-dev';
 
-// SELLER REGISTER
+
 router.post('/register', async (req, res) => {
   try {
     const { shopName, email, password, phone, address } = req.body;
@@ -50,7 +50,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// SELLER LOGIN
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -62,7 +62,7 @@ router.post('/login', async (req, res) => {
     if (!seller)
       return res.status(400).json({ error: "Seller not found" });
 
-    // block banned / suspended
+
     if (seller.banned) return res.status(403).json({ error: 'Account banned permanently' });
     if (seller.suspended) return res.status(403).json({ error: 'Account suspended by admin' });
 
@@ -84,7 +84,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// GET PUBLIC SELLER BY ID
+
 router.get('/:id', async (req, res) => {
   try {
     const seller = await Seller.findById(req.params.id).select('-passwordHash').lean();
@@ -96,7 +96,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// GET my bank info
+
 router.get('/me/bank-info', authSeller, async (req, res) => {
   try {
     const seller = await Seller.findById(req.seller.id).select('bankInfo').lean();
@@ -108,7 +108,7 @@ router.get('/me/bank-info', authSeller, async (req, res) => {
   }
 });
 
-// UPDATE my bank info
+
 router.put('/me/bank-info', authSeller, async (req, res) => {
   try {
     const seller = await Seller.findById(req.seller.id);
@@ -130,7 +130,7 @@ router.put('/me/bank-info', authSeller, async (req, res) => {
   }
 });
 
-// seller creates product
+
 router.post('/me/products', authSeller, async (req, res) => {
   try {
     const sellerId = req.seller.id;
@@ -176,7 +176,7 @@ router.get('/me/orders', authSeller, async (req, res) => {
       .populate('orderId')            // bring order snapshot
       .populate('userId', 'name email'); // buyer info
 
-    // Clean numeric fields
+
     const clean = txs.map(t => (Object.assign({}, t._doc, {
       totalAmount: Number(t.totalAmount || 0),
       serviceChargeAmount: Number(t.serviceChargeAmount || 0),
@@ -190,7 +190,7 @@ router.get('/me/orders', authSeller, async (req, res) => {
   }
 });
 
-// SELLER UPDATES ORDER STATUS
+
 router.put('/me/orders/:id/status', authSeller, async (req, res) => {
   try {
     const { status } = req.body;
@@ -200,22 +200,22 @@ router.put('/me/orders/:id/status', authSeller, async (req, res) => {
     if (!status)
       return res.status(400).json({ error: "Status required" });
 
-    // 1. Find order
+
     const order = await Order.findOne({ _id: orderId, seller: sellerId });
     if (!order)
       return res.status(404).json({ error: "Order not found" });
 
-    // 2. Update order status (Order.schema must include the enum/status field)
+
     order.status = status;
     await order.save();
 
-    // 3. Update Transaction status (set both status and orderStatus for robustness)
+
     await Transaction.updateMany(
       { orderId },
       { $set: { status: status, orderStatus: status } }
     );
 
-    // 4. Update History (if present) — best-effort
+
     if (History) {
       try {
         await History.updateMany(
@@ -223,7 +223,7 @@ router.put('/me/orders/:id/status', authSeller, async (req, res) => {
           { $set: { status } }
         );
       } catch (e) {
-        // ignore history update failure
+
       }
     }
 
@@ -238,7 +238,7 @@ router.put('/me/orders/:id/status', authSeller, async (req, res) => {
   }
 });
 
-// UPDATE SELLER STORE INFO
+
 router.put("/me/store", authSeller, async (req, res) => {
   try {
     const seller = await Seller.findById(req.seller._id);
@@ -246,14 +246,14 @@ router.put("/me/store", authSeller, async (req, res) => {
       return res.status(404).json({ error: "Seller not found" });
     }
 
-    // UPDATE FIELDS
+
     seller.shopName = req.body.shopName ?? seller.shopName;
     seller.shopDescription = req.body.shopDescription ?? seller.shopDescription;
     seller.shopLogo = req.body.shopLogo ?? seller.shopLogo;
     seller.phone = req.body.phone ?? seller.phone;
     seller.address = req.body.address ?? seller.address;
 
-    // UPDATE LOCATION
+
     if (!seller.location) seller.location = {}; // safety
     seller.location.lat = req.body.location?.lat ?? seller.location.lat;
     seller.location.lng = req.body.location?.lng ?? seller.location.lng;
@@ -261,7 +261,7 @@ router.put("/me/store", authSeller, async (req, res) => {
 
     await seller.save();
 
-    // RETURN SANITIZED DATA
+
     const { passwordHash, ...cleanSeller } = seller.toObject();
 
     res.json({

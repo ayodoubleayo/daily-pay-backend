@@ -1,4 +1,4 @@
-// backend/models/Transaction.js
+
 const mongoose = require("mongoose");
 
 const TransactionSchema = new mongoose.Schema({
@@ -11,14 +11,14 @@ const TransactionSchema = new mongoose.Schema({
   serviceChargeAmount: { type: Number, default: 0 },
   amountToSeller: { type: Number, default: 0 },
 
-  // store items snapshot (optional: may contain product, name, price, qty)
+
   items: { type: Array, default: [] },
 
-  // shipping snapshot
+
   shipping: {
     method: { type: String, enum: ["pickup", "delivery"], default: "pickup" },
     fee: { type: Number, default: 0 },
-    // extra details (address/name/phone) - flexible
+
     details: { type: mongoose.Schema.Types.Mixed, default: {} }
   },
 

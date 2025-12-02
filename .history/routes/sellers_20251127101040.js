@@ -1,4 +1,4 @@
-// backend/routes/sellers.js
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -9,18 +9,18 @@ const Product = require('../models/Product');
 const Transaction = require('../models/Transaction'); // used to show seller purchases
 const Order = require('../models/Order');             // <-- ensure Order model is imported
 
-// History isn't always present in every project. try to require it safely.
+
 let History = null;
 try {
   History = require('../models/History');
 } catch (e) {
-  // History optional — we'll skip updating it if not available.
+
 }
 
 const authSeller = require('../middleware/authSeller');
 const JWT_SECRET = process.env.JWT_SECRET || 'secret-dev';
 
-// SELLER REGISTER
+
 router.post('/register', async (req, res) => {
   try {
     const { shopName, email, password, phone, address } = req.body;
@@ -35,7 +35,7 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const seller = new Seller({
-      // ensure required `name` field in schema is set (use shopName)
+
       name: shopName,
       shopName,
       email: normalizedEmail,
@@ -53,7 +53,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// SELLER LOGIN
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -66,7 +66,7 @@ router.post('/login', async (req, res) => {
     if (!seller)
       return res.status(400).json({ error: "Seller not found" });
 
-    // block banned / suspended
+
     if (seller.banned) return res.status(403).json({ error: 'Account banned permanently' });
     if (seller.suspended) return res.status(403).json({ error: 'Account suspended by admin' });
 
@@ -88,4 +88,4 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ... rest of file unchanged (GET /:id, bank-info, product creation, etc.)
+

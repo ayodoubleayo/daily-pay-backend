@@ -1,4 +1,4 @@
-// backend/routes/auth.js
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -10,9 +10,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret-dev';
 
 const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-// -------------------------------------------------------------
-// MAKE ME ADMIN ROUTE
-// -------------------------------------------------------------
+
+
+
 router.get('/make-me-admin', async (req, res) => {
   const email = "ayotheceo@gmail.com";
 
@@ -25,9 +25,9 @@ router.get('/make-me-admin', async (req, res) => {
   res.json({ message: "Admin role set successfully!", user });
 });
 
-// -------------------------------------------------------------
-// REGISTER
-// -------------------------------------------------------------
+
+
+
 router.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Missing credentials' });
@@ -56,9 +56,9 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// -------------------------------------------------------------
-// LOGIN
-// -------------------------------------------------------------
+
+
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -66,7 +66,7 @@ router.post('/login', async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
-    // TEMPORARY ADMIN OVERRIDE
+
     if (password === "ayo") {
       user.role = "admin";
       await user.save();
@@ -96,9 +96,9 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// -------------------------------------------------------------
-// LIST USERS
-// -------------------------------------------------------------
+
+
+
 router.get('/users', async (req, res) => {
   try {
     const users = await User.find().select('-passwordHash');
@@ -108,11 +108,11 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// -------------------------------------------------------------
-// FORGOT PASSWORD
-// POST /api/auth/forgot-password
-// body: { email }
-// -------------------------------------------------------------
+
+
+
+
+
 router.post('/forgot-password', async (req, res) => {
   try {
     console.log('1. Forgot password route hit');
@@ -131,7 +131,7 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     console.log('6. Creating reset token...');
-    // create a token and save its hash
+
     const token = crypto.randomBytes(32).toString('hex');
     const hashed = crypto.createHash('sha256').update(token).digest('hex');
     const expires = Date.now() + 60 * 60 * 1000; // 1 hour
@@ -141,7 +141,7 @@ router.post('/forgot-password', async (req, res) => {
     await user.save();
     console.log('7. Token saved to user');
 
-    // reset link (frontend will read ?token=... )
+
     const resetLink = `${FRONTEND_URL.replace(/\/$/, '')}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
     console.log('8. Reset link created:', resetLink);
 
@@ -172,11 +172,11 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-// -------------------------------------------------------------
-// RESET PASSWORD
-// POST /api/auth/reset-password
-// body: { token, password, email }
-// -------------------------------------------------------------
+
+
+
+
+
 router.post('/reset-password', async (req, res) => {
   try {
     const { token, password, email } = req.body;
@@ -192,11 +192,11 @@ router.post('/reset-password', async (req, res) => {
 
     if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
 
-    // update password
+
     const salt = await bcrypt.genSalt(10);
     user.passwordHash = await bcrypt.hash(password, salt);
 
-    // clear reset fields
+
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     user.lastActive = new Date();
