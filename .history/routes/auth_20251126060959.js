@@ -1,7 +1,7 @@
 
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
@@ -37,7 +37,7 @@ router.post('/register', async (req, res) => {
     const exists = await User.findOne({ email: normalizedEmail });
     if (exists) return res.status(400).json({ error: 'User exists' });
 
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcryptjs.hash(password, 10);
     const user = await User.create({ name, email: normalizedEmail, passwordHash: hash });
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' });
@@ -72,7 +72,7 @@ router.post('/login', async (req, res) => {
     if (user.banned) return res.status(403).json({ error: 'Account banned permanently' });
     if (user.suspended) return res.status(403).json({ error: 'Account suspended by admin' });
 
-    const ok = await bcrypt.compare(password, user.passwordHash || '');
+    const ok = await bcryptjs.compare(password, user.passwordHash || '');
     if (!ok) return res.status(400).json({ error: 'Invalid credentials' });
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' });
@@ -190,8 +190,8 @@ router.post('/reset-password', async (req, res) => {
     if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
 
 
-    const salt = await bcrypt.genSalt(10);
-    user.passwordHash = await bcrypt.hash(password, salt);
+    const salt = await bcryptjs.genSalt(10);
+    user.passwordHash = await bcryptjs.hash(password, salt);
 
 
     user.resetPasswordToken = undefined;

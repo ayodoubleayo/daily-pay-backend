@@ -1,7 +1,7 @@
 
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
+const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const Seller = require('../models/Seller');
@@ -32,7 +32,7 @@ router.post('/register', async (req, res) => {
     const exists = await Seller.findOne({ email: normalizedEmail });
     if (exists) return res.status(400).json({ error: "Seller already exists" });
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcryptjs.hash(password, 10);
 
     const seller = new Seller({
 
@@ -70,7 +70,7 @@ router.post('/login', async (req, res) => {
     if (seller.banned) return res.status(403).json({ error: 'Account banned permanently' });
     if (seller.suspended) return res.status(403).json({ error: 'Account suspended by admin' });
 
-    const isMatch = await bcrypt.compare(password, seller.passwordHash);
+    const isMatch = await bcryptjs.compare(password, seller.passwordHash);
     if (!isMatch)
       return res.status(400).json({ error: "Invalid password" });
 
