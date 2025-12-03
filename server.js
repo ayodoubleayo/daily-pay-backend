@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+app.set('trust proxy', 1); // required on Render to fix X-Forwarded-For issues
+
 const cors = require('cors');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
