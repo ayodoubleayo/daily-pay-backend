@@ -76,7 +76,11 @@ router.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password, user.passwordHash || '');
     if (!ok) return res.status(400).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user._id, role: user.role || 'user' }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign(
+      { id: user._id, role: user.role || 'user' },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
 
     res.cookie(COOKIE_NAME, token, {
       httpOnly: true,
@@ -85,14 +89,22 @@ router.post('/login', async (req, res) => {
       maxAge: COOKIE_MAX_AGE,
     });
 
-    res.json({
-      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+    return res.json({
+      token,  // ⭐️ THIS FIXES YOUR FRONTEND (localStorage -> token no longer undefined)
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
     });
+
   } catch (err) {
     console.error('login error', err);
     res.status(500).json({ error: 'Login failed' });
   }
 });
+
 
 router.post('/logout', async (req, res) => {
   res.clearCookie(COOKIE_NAME, {

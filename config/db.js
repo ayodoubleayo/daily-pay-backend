@@ -1,26 +1,19 @@
-// backend/config/db.js
 const mongoose = require('mongoose');
 
-async function connectDB() {
-  // accept multiple common env names
-  const uri = process.env.MONGODB_URI ||
-              process.env.MONGO_URI ||
-              process.env.MONGO_URL ||
-              // fallback to your long connection string if env not set (you may remove this)
-              'mongodb+srv://ayo-ecom:CBZoMcMAY4sd0j7Y@cluster0.qyzmvty.mongodb.net/ecommerce?retryWrites=true&w=majority&appName=Cluster0';
-
+const connectDB = async () => {
   try {
-    await mongoose.connect(uri, {
-      // modern mongoose options
-      useNewUrlParser: true,
-      useUnifiedTopology: true
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 30000,  // ⏳ extend server selection timeout
+      socketTimeoutMS: 45000,           // ⏳ allow long-running queries
+      connectTimeoutMS: 30000,          // ⏳ extend initial connection timeout
+      retryWrites: true,
     });
-    console.log('MongoDB connected successfully');
+
+    console.log("MongoDB connected successfully");
   } catch (err) {
-    console.error('MongoDB connection error:', err);
-    // In development we exit so it's obvious; in production you may prefer to retry
+    console.error("MongoDB connection error:", err);
     process.exit(1);
   }
-}
+};
 
 module.exports = connectDB;
