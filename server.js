@@ -1,4 +1,4 @@
-require('dotenv').config(); 
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -38,36 +38,43 @@ app.use(
 );
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
+  windowMs: 15 * 60 * 1000,
   max: 100,
   message: 'Too many requests from this IP, please try again later.'
 });
 app.use('/api/', limiter);
 
 app.use(mongoSanitize());
-
 app.use(compression());
 
-/* -------------------------------------------
-   ✅ UPDATED CORS CONFIG (Whitelist)
--------------------------------------------- */
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://daily-pay-frontend.vercel.app',
-  'https://daily-pay-frontend-gdj3fjgcc-ayodoubleayos-projects.vercel.app'
-];
-
+/* ---------------------------------------------------
+   ✅ UPDATED CORS CONFIG — Supports All Vercel URLs
+---------------------------------------------------- */
 app.use(
   cors({
-    origin: (origin, callback) => {
+    origin: function (origin, callback) {
+      const allowed = [
+        'http://localhost:3000',
+        'https://daily-pay-frontend.vercel.app',
+        /\.vercel\.app$/   // <= wildcard support (any preview deployment)
+      ];
+
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error('Not allowed by CORS'));
+
+      const isAllowed =
+        allowed.includes(origin) ||
+        allowed.some((entry) => entry instanceof RegExp && entry.test(origin));
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS: ' + origin));
+      }
     },
     credentials: true,
   })
 );
-/* ------------------------------------------- */
+/* --------------------------------------------------- */
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
