@@ -1,4 +1,4 @@
-// backend/routes/sellers.js
+// routes/sellers.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
@@ -19,31 +19,22 @@ try {
 const authSeller = require('../middleware/authSeller'); // expects seller auth
 const JWT_SECRET = process.env.JWT_SECRET || 'secret-dev';
 
-/*
-  Helper: get seller id from request (supports different auth shapes)
-*/
 function getSellerIdFromReq(req) {
-  // try req.user, req.seller, then req.sellerId (defensive)
   return (req.user && req.user.id) || (req.seller && req.seller.id) || req.sellerId || null;
 }
 
-/* ---------------------------
-   Public: Register / Login
-   --------------------------- */
 // REGISTER
 router.post('/register', async (req, res) => {
   try {
-    const { shopName, email, password, phone, address } = req.body;
-    if (!shopName || !email || !password) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    const { shopName, email, password, phone = '', address = '' } = req.body;
+    if (!shopName || !email || !password) return res.status(400).json({ error: 'Missing required fields' });
 
     const normalizedEmail = email.toLowerCase().trim();
     if (await Seller.findOne({ email: normalizedEmail })) {
       return res.status(400).json({ error: 'Seller already exists' });
     }
 
-    const passwordHash = await bcryptjs.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 10);
     const seller = new Seller({
       name: shopName,
       shopName,
@@ -54,7 +45,7 @@ router.post('/register', async (req, res) => {
     });
 
     await seller.save();
-    res.json({ ok: true, seller: { id: seller._id, shopName: seller.shopName, email: seller.email } });
+    res.status(201).json({ ok: true, seller: { id: seller._id, shopName: seller.shopName, email: seller.email } });
   } catch (err) {
     console.error('seller register error', err);
     res.status(500).json({ error: 'Failed to register seller' });
@@ -64,7 +55,7 @@ router.post('/register', async (req, res) => {
 // LOGIN
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email = '', password = '' } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Missing fields' });
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -74,7 +65,7 @@ router.post('/login', async (req, res) => {
     if (seller.banned) return res.status(403).json({ error: 'Account banned' });
     if (seller.suspended) return res.status(403).json({ error: 'Account suspended' });
 
-    const ok = await bcryptjs.compare(password, seller.passwordHash || '');
+    const ok = await bcrypt.compare(password, seller.passwordHash || '');
     if (!ok) return res.status(400).json({ error: 'Invalid credentials' });
 
     const token = jwt.sign({ id: seller._id, role: 'seller' }, JWT_SECRET, { expiresIn: '30d' });
@@ -88,12 +79,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/* -----------------------------------
-   Protected seller endpoints (authSeller)
-   authSeller should set req.user.id or req.seller.id
-   ----------------------------------- */
-
-// GET current seller profile
 router.get('/me', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
@@ -109,7 +94,6 @@ router.get('/me', authSeller, async (req, res) => {
   }
 });
 
-// GET products for current seller
 router.get('/me/products', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
@@ -121,17 +105,16 @@ router.get('/me/products', authSeller, async (req, res) => {
   }
 });
 
-// CREATE product (seller)
 router.post('/me/products', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
-    const { name, description, price = 0, qty = 1, images = [], category = null } = req.body;
+    const { name, description = '', price = 0, qty = 1, images = [], category = null } = req.body;
 
     if (!name || price == null) return res.status(400).json({ error: 'Name and price required' });
 
     const product = await Product.create({
       name: name.trim(),
-      description: description || '',
+      description,
       price: Number(price),
       qty: Number(qty || 1),
       images: images || [],
@@ -146,7 +129,6 @@ router.post('/me/products', authSeller, async (req, res) => {
   }
 });
 
-// UPDATE product (seller own product)
 router.put('/me/products/:id', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
@@ -167,7 +149,6 @@ router.put('/me/products/:id', authSeller, async (req, res) => {
   }
 });
 
-// DELETE product (seller)
 router.delete('/me/products/:id', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
@@ -183,7 +164,6 @@ router.delete('/me/products/:id', authSeller, async (req, res) => {
   }
 });
 
-// LIST orders for this seller
 router.get('/me/orders', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
@@ -195,7 +175,6 @@ router.get('/me/orders', authSeller, async (req, res) => {
   }
 });
 
-// GET single order for seller
 router.get('/me/orders/:id', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
@@ -210,7 +189,6 @@ router.get('/me/orders/:id', authSeller, async (req, res) => {
   }
 });
 
-// Seller transactions (sales / payouts)
 router.get('/me/transactions', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
@@ -222,7 +200,6 @@ router.get('/me/transactions', authSeller, async (req, res) => {
   }
 });
 
-// Dashboard summary for seller
 router.get('/me/dashboard', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
@@ -239,12 +216,7 @@ router.get('/me/dashboard', authSeller, async (req, res) => {
 
     res.json({
       ok: true,
-      summary: {
-        totalProducts,
-        totalOrders,
-        totalSales,
-        pendingPayouts
-      }
+      summary: { totalProducts, totalOrders, totalSales, pendingPayouts }
     });
   } catch (err) {
     console.error('seller dashboard error', err);
@@ -252,7 +224,6 @@ router.get('/me/dashboard', authSeller, async (req, res) => {
   }
 });
 
-// Bank info read/update
 router.get('/me/bank-info', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
@@ -277,7 +248,6 @@ router.put('/me/bank-info', authSeller, async (req, res) => {
   }
 });
 
-// Payout request (simple)
 router.post('/me/payout-request', authSeller, async (req, res) => {
   try {
     const sellerId = getSellerIdFromReq(req);
@@ -299,7 +269,6 @@ router.post('/me/payout-request', authSeller, async (req, res) => {
   }
 });
 
-// History (optional)
 router.get('/me/history', authSeller, async (req, res) => {
   try {
     if (!History) return res.json({ ok: true, history: [] });
@@ -312,11 +281,10 @@ router.get('/me/history', authSeller, async (req, res) => {
   }
 });
 
-/* -------------------------
-   Admin-ish endpoints (optional)
-   ------------------------- */
 const authAdmin = (() => {
-  try { return require('../middleware/authAdmin'); } catch(e){ 
+  try {
+    return require('../middleware/authAdmin');
+  } catch (e) {
     return (req, res, next) => {
       const secret = req.headers['x-admin-secret'] || req.query.adminSecret;
       if (!secret || secret !== process.env.ADMIN_SECRET) return res.status(403).json({ error: 'Admin auth required' });
@@ -325,7 +293,6 @@ const authAdmin = (() => {
   }
 })();
 
-// Admin: list sellers
 router.get('/admin/list', authAdmin, async (req, res) => {
   try {
     const sellers = await Seller.find().select('-passwordHash').sort({ createdAt: -1 });
@@ -336,7 +303,6 @@ router.get('/admin/list', authAdmin, async (req, res) => {
   }
 });
 
-// Admin: approve seller
 router.put('/admin/:id/approve', authAdmin, async (req, res) => {
   try {
     const s = await Seller.findById(req.params.id);
@@ -351,4 +317,3 @@ router.put('/admin/:id/approve', authAdmin, async (req, res) => {
 });
 
 module.exports = router;
-     
