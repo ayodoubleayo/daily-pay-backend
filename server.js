@@ -1,7 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-app.set('trust proxy', 1); // required on Render to fix X-Forwarded-For issues
-
 const cors = require('cors');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
@@ -11,6 +9,9 @@ const morgan = require('morgan');
 const connectDB = require('./config/db');
 const cookieParser = require('cookie-parser');
 
+/* ---------------------------------------------------
+   ENV VALIDATION
+---------------------------------------------------- */
 const requiredEnv = ['MONGODB_URI', 'JWT_SECRET', 'ADMIN_SECRET'];
 requiredEnv.forEach(key => {
   if (!process.env[key]) {
@@ -19,13 +20,25 @@ requiredEnv.forEach(key => {
   }
 });
 
+/* ---------------------------------------------------
+   EXPRESS APP INIT
+---------------------------------------------------- */
 const app = express();
-const PORT = process.env.PORT || 5000;
 
+// ✅ Correct placement — trust proxy must be AFTER app is created
+app.set('trust proxy', 1);
+
+const PORT = process.env.PORT || 5000;
 app.use(cookieParser());
 
+/* ---------------------------------------------------
+   DATABASE
+---------------------------------------------------- */
 connectDB();
 
+/* ---------------------------------------------------
+   SECURITY MIDDLEWARES
+---------------------------------------------------- */
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -42,7 +55,7 @@ app.use(
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: 'Too many requests from this IP, please try again later.'
+  message: 'Too many requests from this IP, please try again later.',
 });
 app.use('/api/', limiter);
 
@@ -50,7 +63,7 @@ app.use(mongoSanitize());
 app.use(compression());
 
 /* ---------------------------------------------------
-   ✅ UPDATED CORS CONFIG — Supports All Vercel URLs
+   CORS CONFIG (supports Vercel wildcard)
 ---------------------------------------------------- */
 app.use(
   cors({
@@ -58,7 +71,7 @@ app.use(
       const allowed = [
         'http://localhost:3000',
         'https://daily-pay-frontend.vercel.app',
-        /\.vercel\.app$/   // <= wildcard support (any preview deployment)
+        /\.vercel\.app$/, // wildcard for all Vercel preview URLs
       ];
 
       if (!origin) return callback(null, true);
@@ -76,19 +89,27 @@ app.use(
     credentials: true,
   })
 );
-/* --------------------------------------------------- */
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+/* ---------------------------------------------------
+   LOGGING
+---------------------------------------------------- */
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 } else {
   app.use(morgan('combined'));
 }
 
+/* ---------------------------------------------------
+   STATIC
+---------------------------------------------------- */
 app.use('/uploads', express.static('uploads'));
 
+/* ---------------------------------------------------
+   ROUTES
+---------------------------------------------------- */
 app.use('/api/products', require('./routes/products'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/sellers', require('./routes/sellers'));
@@ -106,6 +127,9 @@ app.use('/api/settings', require('./routes/settings'));
 app.use('/api/shipping', require('./routes/shipping'));
 app.use('/api/riders', require('./routes/riders'));
 
+/* ---------------------------------------------------
+   HEALTH CHECK
+---------------------------------------------------- */
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -114,21 +138,25 @@ app.get('/health', (req, res) => {
   });
 });
 
-/* -------------------------------------------
-   Render Root Fix
--------------------------------------------- */
+/* ---------------------------------------------------
+   ROOT ROUTE (Render Fix)
+---------------------------------------------------- */
 app.get('/', (req, res) => {
   res.send('Backend is running ✔️');
 });
-/* ------------------------------------------- */
 
+/* ---------------------------------------------------
+   404 HANDLER
+---------------------------------------------------- */
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+/* ---------------------------------------------------
+   GLOBAL ERROR HANDLER
+---------------------------------------------------- */
 app.use((err, req, res, next) => {
   console.error('Global error:', err);
-
   const message =
     process.env.NODE_ENV === 'production'
       ? 'Internal server error'
@@ -140,6 +168,9 @@ app.use((err, req, res, next) => {
   });
 });
 
+/* ---------------------------------------------------
+   GRACEFUL SHUTDOWN
+---------------------------------------------------- */
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully...');
   server.close(() => {
@@ -148,6 +179,9 @@ process.on('SIGTERM', () => {
   });
 });
 
+/* ---------------------------------------------------
+   START SERVER
+---------------------------------------------------- */
 const server = app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
